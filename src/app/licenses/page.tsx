@@ -67,6 +67,7 @@ export default function LicenseManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
@@ -127,6 +128,7 @@ export default function LicenseManagement() {
       expiryDate: "",
       status: "Đang xử lý",
     });
+    setIsViewMode(false);
     setIsModalOpen(true);
   };
 
@@ -140,6 +142,21 @@ export default function LicenseManagement() {
       expiryDate: license.expiryDate || "",
       status: license.status,
     });
+    setIsViewMode(false);
+    setIsModalOpen(true);
+  };
+
+  const handleViewLicense = (license: License) => {
+    setSelectedLicense(license);
+    setFormData({
+      studentId: license.studentId,
+      studentName: license.studentName,
+      licenseType: license.licenseType,
+      issueDate: license.issueDate,
+      expiryDate: license.expiryDate || "",
+      status: license.status,
+    });
+    setIsViewMode(true);
     setIsModalOpen(true);
   };
 
@@ -320,6 +337,7 @@ export default function LicenseManagement() {
                       <button
                         className="text-blue-600 hover:text-blue-900"
                         title="Xem chi tiết"
+                        onClick={() => handleViewLicense(license)}
                       >
                         <FaEye />
                       </button>
@@ -361,13 +379,15 @@ export default function LicenseManagement() {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {selectedLicense
+                {isViewMode
+                  ? "Chi tiết hồ sơ GPLX"
+                  : selectedLicense
                   ? "Chỉnh sửa hồ sơ cấp GPLX"
                   : "Tạo hồ sơ cấp GPLX mới"}
               </h3>
             </div>
             <div className="p-6">
-              {validationErrors.length > 0 && (
+              {validationErrors.length > 0 && !isViewMode && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
                   <div className="text-red-700">
                     <p className="font-medium">
@@ -396,10 +416,13 @@ export default function LicenseManagement() {
                     <input
                       type="text"
                       name="studentName"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.studentName}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -409,10 +432,13 @@ export default function LicenseManagement() {
                     <input
                       type="text"
                       name="studentId"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.studentId}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -421,10 +447,13 @@ export default function LicenseManagement() {
                     </label>
                     <select
                       name="licenseType"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.licenseType}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="">Chọn loại GPLX</option>
                       <option value="A1">A1</option>
@@ -440,10 +469,13 @@ export default function LicenseManagement() {
                     </label>
                     <select
                       name="status"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.status}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="Đang xử lý">Đang xử lý</option>
                       <option value="Đã cấp">Đã cấp</option>
@@ -456,9 +488,12 @@ export default function LicenseManagement() {
                     <input
                       type="date"
                       name="issueDate"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.issueDate}
                       onChange={handleInputChange}
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -468,9 +503,12 @@ export default function LicenseManagement() {
                     <input
                       type="date"
                       name="expiryDate"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.expiryDate}
                       onChange={handleInputChange}
+                      readOnly={isViewMode}
                     />
                   </div>
                 </div>
@@ -482,15 +520,17 @@ export default function LicenseManagement() {
                 className="py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                 onClick={() => setIsModalOpen(false)}
               >
-                Hủy
+                {isViewMode ? "Đóng" : "Hủy"}
               </button>
-              <button
-                type="button"
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={handleSubmit}
-              >
-                {selectedLicense ? "Cập nhật" : "Tạo mới"}
-              </button>
+              {!isViewMode && (
+                <button
+                  type="button"
+                  className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
+                  onClick={handleSubmit}
+                >
+                  {selectedLicense ? "Cập nhật" : "Tạo mới"}
+                </button>
+              )}
             </div>
           </div>
         </div>

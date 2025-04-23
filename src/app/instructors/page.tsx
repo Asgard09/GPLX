@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import {
-  FaSearch,
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaEye,
-  FaChalkboardTeacher,
-} from "react-icons/fa";
+import { FaSearch, FaPlus, FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import { db } from "@/firebase/config";
 import {
   collection,
@@ -152,6 +145,7 @@ export default function InstructorManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [selectedInstructor, setSelectedInstructor] =
     useState<Instructor | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -230,6 +224,22 @@ export default function InstructorManagement() {
       specialization: instructor.specialization,
       status: instructor.status,
     });
+    setIsViewMode(false);
+    setIsModalOpen(true);
+  };
+
+  const handleViewInstructor = (instructor: Instructor) => {
+    setSelectedInstructor(instructor);
+    setFormData({
+      name: instructor.name,
+      dob: instructor.dob,
+      phone: instructor.phone,
+      email: instructor.email,
+      address: instructor.address,
+      specialization: instructor.specialization,
+      status: instructor.status,
+    });
+    setIsViewMode(true);
     setIsModalOpen(true);
   };
 
@@ -254,7 +264,7 @@ export default function InstructorManagement() {
       errors.push("Email không đúng định dạng");
     }
 
-    // Kiểm tra ngày sinh (phải đủ 18 tuổi)
+    // Kiểm tra ngày sinh (phải đủ 22 tuổi)
     if (formData.dob) {
       const birthDate = new Date(formData.dob);
       const today = new Date();
@@ -449,6 +459,7 @@ export default function InstructorManagement() {
                       <button
                         className="text-blue-600 hover:text-blue-900"
                         title="Xem chi tiết"
+                        onClick={() => handleViewInstructor(instructor)}
                       >
                         <FaEye />
                       </button>
@@ -482,13 +493,15 @@ export default function InstructorManagement() {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {selectedInstructor
+                {isViewMode
+                  ? "Chi tiết giáo viên"
+                  : selectedInstructor
                   ? "Chỉnh sửa thông tin giáo viên"
                   : "Thêm giáo viên mới"}
               </h3>
             </div>
             <div className="p-6">
-              {validationErrors.length > 0 && (
+              {validationErrors.length > 0 && !isViewMode && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
                   <div className="text-red-700">
                     <p className="font-medium">
@@ -517,10 +530,13 @@ export default function InstructorManagement() {
                     <input
                       type="text"
                       name="name"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.name}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -530,10 +546,13 @@ export default function InstructorManagement() {
                     <input
                       type="date"
                       name="dob"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.dob}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -543,10 +562,13 @@ export default function InstructorManagement() {
                     <input
                       type="tel"
                       name="phone"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.phone}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -556,10 +578,13 @@ export default function InstructorManagement() {
                     <input
                       type="email"
                       name="email"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.email}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -569,10 +594,13 @@ export default function InstructorManagement() {
                     <input
                       type="text"
                       name="address"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.address}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -581,10 +609,13 @@ export default function InstructorManagement() {
                     </label>
                     <select
                       name="specialization"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.specialization}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="">Chọn chuyên môn</option>
                       <option value="Lý thuyết">Lý thuyết</option>
@@ -600,10 +631,13 @@ export default function InstructorManagement() {
                     </label>
                     <select
                       name="status"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.status}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="Đang dạy">Đang dạy</option>
                       <option value="Nghỉ phép">Nghỉ phép</option>
@@ -619,15 +653,17 @@ export default function InstructorManagement() {
                 className="py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                 onClick={() => setIsModalOpen(false)}
               >
-                Hủy
+                {isViewMode ? "Đóng" : "Hủy"}
               </button>
-              <button
-                type="button"
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={handleSubmit}
-              >
-                {selectedInstructor ? "Cập nhật" : "Tạo mới"}
-              </button>
+              {!isViewMode && (
+                <button
+                  type="button"
+                  className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
+                  onClick={handleSubmit}
+                >
+                  {selectedInstructor ? "Cập nhật" : "Tạo mới"}
+                </button>
+              )}
             </div>
           </div>
         </div>

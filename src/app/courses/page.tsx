@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import {
-  FaSearch,
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaUserPlus,
-  FaCalendarAlt,
-} from "react-icons/fa";
+import { FaSearch, FaPlus, FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import { courseService, Course } from "@/services/firebaseService";
 
 // Thêm dữ liệu mẫu
@@ -77,6 +70,7 @@ export default function CourseManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
@@ -153,6 +147,7 @@ export default function CourseManagement() {
       status: "Sắp diễn ra",
       description: "",
     });
+    setIsViewMode(false);
     setIsModalOpen(true);
   };
 
@@ -169,6 +164,24 @@ export default function CourseManagement() {
       status: course.status,
       description: course.description || "",
     });
+    setIsViewMode(false);
+    setIsModalOpen(true);
+  };
+
+  const handleViewCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setFormData({
+      name: course.name,
+      licenseType: course.licenseType,
+      startDate: course.startDate,
+      endDate: course.endDate,
+      maxStudents: course.maxStudents,
+      instructors: course.instructors,
+      fee: course.fee,
+      status: course.status,
+      description: course.description || "",
+    });
+    setIsViewMode(true);
     setIsModalOpen(true);
   };
 
@@ -450,15 +463,10 @@ export default function CourseManagement() {
                     <div className="flex justify-end space-x-2">
                       <button
                         className="text-blue-600 hover:text-blue-900"
-                        title="Phân công giáo viên"
+                        title="Xem chi tiết"
+                        onClick={() => handleViewCourse(course)}
                       >
-                        <FaUserPlus />
-                      </button>
-                      <button
-                        className="text-yellow-600 hover:text-yellow-900"
-                        title="Quản lý lịch học"
-                      >
-                        <FaCalendarAlt />
+                        <FaEye />
                       </button>
                       <button
                         className="text-indigo-600 hover:text-indigo-900"
@@ -490,11 +498,15 @@ export default function CourseManagement() {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {selectedCourse ? "Chỉnh sửa khóa học" : "Tạo khóa học mới"}
+                {isViewMode
+                  ? "Chi tiết khóa học"
+                  : selectedCourse
+                  ? "Chỉnh sửa khóa học"
+                  : "Tạo khóa học mới"}
               </h3>
             </div>
             <div className="p-6">
-              {validationErrors.length > 0 && (
+              {validationErrors.length > 0 && !isViewMode && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
                   <div className="text-red-700">
                     <p className="font-medium">
@@ -523,10 +535,13 @@ export default function CourseManagement() {
                     <input
                       type="text"
                       name="name"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.name}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -535,10 +550,13 @@ export default function CourseManagement() {
                     </label>
                     <select
                       name="licenseType"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.licenseType}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="">Chọn loại bằng lái</option>
                       <option value="A1">A1</option>
@@ -555,10 +573,13 @@ export default function CourseManagement() {
                     <input
                       type="number"
                       name="maxStudents"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.maxStudents}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -568,10 +589,13 @@ export default function CourseManagement() {
                     <input
                       type="number"
                       name="instructors"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.instructors}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -581,10 +605,13 @@ export default function CourseManagement() {
                     <input
                       type="date"
                       name="startDate"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.startDate}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -594,10 +621,13 @@ export default function CourseManagement() {
                     <input
                       type="date"
                       name="endDate"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.endDate}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -606,10 +636,13 @@ export default function CourseManagement() {
                     </label>
                     <select
                       name="status"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.status}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="Sắp diễn ra">Sắp diễn ra</option>
                       <option value="Đang diễn ra">Đang diễn ra</option>
@@ -623,10 +656,13 @@ export default function CourseManagement() {
                     <input
                       type="number"
                       name="fee"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.fee}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -635,10 +671,13 @@ export default function CourseManagement() {
                     </label>
                     <textarea
                       name="description"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       rows={3}
                       value={formData.description}
                       onChange={handleInputChange}
+                      readOnly={isViewMode}
                     ></textarea>
                   </div>
                 </div>
@@ -650,15 +689,17 @@ export default function CourseManagement() {
                 className="py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                 onClick={() => setIsModalOpen(false)}
               >
-                Hủy
+                {isViewMode ? "Đóng" : "Hủy"}
               </button>
-              <button
-                type="button"
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={handleSubmit}
-              >
-                {selectedCourse ? "Cập nhật" : "Tạo mới"}
-              </button>
+              {!isViewMode && (
+                <button
+                  type="button"
+                  className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
+                  onClick={handleSubmit}
+                >
+                  {selectedCourse ? "Cập nhật" : "Tạo mới"}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -155,6 +155,7 @@ export default function ExamManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
@@ -231,6 +232,7 @@ export default function ExamManagement() {
       status: "Sắp diễn ra",
       description: "",
     });
+    setIsViewMode(false);
     setIsModalOpen(true);
   };
 
@@ -246,6 +248,23 @@ export default function ExamManagement() {
       status: exam.status,
       description: exam.description || "",
     });
+    setIsViewMode(false);
+    setIsModalOpen(true);
+  };
+
+  const handleViewExam = (exam: Exam) => {
+    setSelectedExam(exam);
+    setFormData({
+      title: exam.title,
+      examDate: exam.examDate,
+      location: exam.location,
+      licenseType: exam.licenseType,
+      maxParticipants: exam.maxParticipants,
+      registeredParticipants: exam.registeredParticipants,
+      status: exam.status,
+      description: exam.description || "",
+    });
+    setIsViewMode(true);
     setIsModalOpen(true);
   };
 
@@ -497,6 +516,7 @@ export default function ExamManagement() {
                       <button
                         className="text-blue-600 hover:text-blue-900"
                         title="Xem chi tiết"
+                        onClick={() => handleViewExam(exam)}
                       >
                         <FaEye />
                       </button>
@@ -528,11 +548,15 @@ export default function ExamManagement() {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {selectedExam ? "Chỉnh sửa kỳ thi" : "Tạo kỳ thi mới"}
+                {isViewMode
+                  ? "Chi tiết kỳ thi"
+                  : selectedExam
+                  ? "Chỉnh sửa kỳ thi"
+                  : "Tạo kỳ thi mới"}
               </h3>
             </div>
             <div className="p-6">
-              {validationErrors.length > 0 && (
+              {validationErrors.length > 0 && !isViewMode && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
                   <div className="text-red-700">
                     <p className="font-medium">
@@ -561,10 +585,13 @@ export default function ExamManagement() {
                     <input
                       type="text"
                       name="title"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.title}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -574,10 +601,13 @@ export default function ExamManagement() {
                     <input
                       type="date"
                       name="examDate"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.examDate}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -586,10 +616,13 @@ export default function ExamManagement() {
                     </label>
                     <select
                       name="licenseType"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.licenseType}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="">Chọn loại bằng</option>
                       <option value="A1">A1</option>
@@ -606,10 +639,13 @@ export default function ExamManagement() {
                     <input
                       type="text"
                       name="location"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.location}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -619,10 +655,13 @@ export default function ExamManagement() {
                     <input
                       type="number"
                       name="maxParticipants"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.maxParticipants}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -632,10 +671,13 @@ export default function ExamManagement() {
                     <input
                       type="number"
                       name="registeredParticipants"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.registeredParticipants}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -644,10 +686,13 @@ export default function ExamManagement() {
                     </label>
                     <select
                       name="status"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.status}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="Sắp diễn ra">Sắp diễn ra</option>
                       <option value="Đang diễn ra">Đang diễn ra</option>
@@ -661,10 +706,13 @@ export default function ExamManagement() {
                     </label>
                     <textarea
                       name="description"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       rows={3}
                       value={formData.description}
                       onChange={handleInputChange}
+                      readOnly={isViewMode}
                     ></textarea>
                   </div>
                 </div>
@@ -676,15 +724,17 @@ export default function ExamManagement() {
                 className="py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                 onClick={() => setIsModalOpen(false)}
               >
-                Hủy
+                {isViewMode ? "Đóng" : "Hủy"}
               </button>
-              <button
-                type="button"
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={handleSubmit}
-              >
-                {selectedExam ? "Cập nhật" : "Tạo mới"}
-              </button>
+              {!isViewMode && (
+                <button
+                  type="button"
+                  className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
+                  onClick={handleSubmit}
+                >
+                  {selectedExam ? "Cập nhật" : "Tạo mới"}
+                </button>
+              )}
             </div>
           </div>
         </div>

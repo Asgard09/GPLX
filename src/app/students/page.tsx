@@ -67,6 +67,7 @@ export default function StudentManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
@@ -143,6 +144,22 @@ export default function StudentManagement() {
       course: student.course,
       status: student.status,
     });
+    setIsViewMode(false);
+    setIsModalOpen(true);
+  };
+
+  const handleViewStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setFormData({
+      name: student.name,
+      dob: student.dob,
+      phone: student.phone,
+      address: student.address,
+      cccd: student.cccd || "",
+      course: student.course,
+      status: student.status,
+    });
+    setIsViewMode(true);
     setIsModalOpen(true);
   };
 
@@ -357,6 +374,7 @@ export default function StudentManagement() {
                       <button
                         className="text-blue-600 hover:text-blue-900"
                         title="Xem chi tiết"
+                        onClick={() => handleViewStudent(student)}
                       >
                         <FaEye />
                       </button>
@@ -396,13 +414,15 @@ export default function StudentManagement() {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {selectedStudent
+                {isViewMode
+                  ? "Chi tiết học viên"
+                  : selectedStudent
                   ? "Chỉnh sửa thông tin học viên"
                   : "Thêm học viên mới"}
               </h3>
             </div>
             <div className="p-6">
-              {validationErrors.length > 0 && (
+              {validationErrors.length > 0 && !isViewMode && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
                   <div className="text-red-700">
                     <p className="font-medium">
@@ -431,10 +451,13 @@ export default function StudentManagement() {
                     <input
                       type="text"
                       name="name"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.name}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -444,10 +467,13 @@ export default function StudentManagement() {
                     <input
                       type="date"
                       name="dob"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.dob}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -457,10 +483,13 @@ export default function StudentManagement() {
                     <input
                       type="text"
                       name="cccd"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.cccd}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -470,10 +499,13 @@ export default function StudentManagement() {
                     <input
                       type="tel"
                       name="phone"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.phone}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -483,10 +515,13 @@ export default function StudentManagement() {
                     <input
                       type="text"
                       name="address"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.address}
                       onChange={handleInputChange}
                       required
+                      readOnly={isViewMode}
                     />
                   </div>
                   <div>
@@ -495,10 +530,13 @@ export default function StudentManagement() {
                     </label>
                     <select
                       name="course"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.course}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="">Chọn khóa học</option>
                       <option value="A1">Khóa đào tạo lái xe hạng A1</option>
@@ -514,10 +552,13 @@ export default function StudentManagement() {
                     </label>
                     <select
                       name="status"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
                       value={formData.status}
                       onChange={handleInputChange}
                       required
+                      disabled={isViewMode}
                     >
                       <option value="Chưa học">Chưa học</option>
                       <option value="Đang học">Đang học</option>
@@ -533,15 +574,17 @@ export default function StudentManagement() {
                 className="py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                 onClick={() => setIsModalOpen(false)}
               >
-                Hủy
+                {isViewMode ? "Đóng" : "Hủy"}
               </button>
-              <button
-                type="button"
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={handleSubmit}
-              >
-                {selectedStudent ? "Cập nhật" : "Tạo mới"}
-              </button>
+              {!isViewMode && (
+                <button
+                  type="button"
+                  className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
+                  onClick={handleSubmit}
+                >
+                  {selectedStudent ? "Cập nhật" : "Tạo mới"}
+                </button>
+              )}
             </div>
           </div>
         </div>
