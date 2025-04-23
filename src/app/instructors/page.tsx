@@ -92,6 +92,60 @@ const instructorService = {
   },
 };
 
+// Dữ liệu mẫu
+const mockInstructors = [
+  {
+    id: "1",
+    name: "Nguyễn Văn An",
+    dob: "1980-05-10",
+    phone: "0901234567",
+    email: "an.nguyen@gmail.com",
+    address: "Hà Nội",
+    specialization: "Lý thuyết",
+    status: "Đang dạy",
+  },
+  {
+    id: "2",
+    name: "Trần Thị Bình",
+    dob: "1985-08-15",
+    phone: "0912345678",
+    email: "binh.tran@gmail.com",
+    address: "TP.HCM",
+    specialization: "Thực hành",
+    status: "Đang dạy",
+  },
+  {
+    id: "3",
+    name: "Phạm Văn Cường",
+    dob: "1978-03-20",
+    phone: "0923456789",
+    email: "cuong.pham@gmail.com",
+    address: "Đà Nẵng",
+    specialization: "Lý thuyết & Thực hành",
+    status: "Đang dạy",
+  },
+  {
+    id: "4",
+    name: "Lê Thị Dung",
+    dob: "1982-11-05",
+    phone: "0934567890",
+    email: "dung.le@gmail.com",
+    address: "Hải Phòng",
+    specialization: "Thực hành",
+    status: "Nghỉ phép",
+  },
+  {
+    id: "5",
+    name: "Hoàng Văn Em",
+    dob: "1975-07-25",
+    phone: "0945678901",
+    email: "em.hoang@gmail.com",
+    address: "Cần Thơ",
+    specialization: "Lý thuyết",
+    status: "Đã nghỉ việc",
+  },
+];
+
 export default function InstructorManagement() {
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -491,48 +545,6 @@ export default function InstructorManagement() {
                       <option value="Nghỉ phép">Nghỉ phép</option>
                       <option value="Đã nghỉ việc">Đã nghỉ việc</option>
                     </select>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Tải lên ảnh chân dung
-                  </label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                    <div className="space-y-1 text-center">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label
-                          htmlFor="file-upload"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
-                        >
-                          <span>Tải lên ảnh</span>
-                          <input
-                            id="file-upload"
-                            name="file-upload"
-                            type="file"
-                            className="sr-only"
-                          />
-                        </label>
-                        <p className="pl-1">hoặc kéo thả</p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF tối đa 10MB
-                      </p>
-                    </div>
                   </div>
                 </div>
               </form>

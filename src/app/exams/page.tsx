@@ -95,62 +95,57 @@ const examService = {
   },
 };
 
-// Mock data
+// Dữ liệu mẫu
 const mockExams = [
   {
     id: "1001",
-    name: "Kỳ thi sát hạch B1 tháng 6/2023",
-    examDate: "15/06/2023",
-    examTime: "08:00",
+    title: "Kỳ thi sát hạch B1 tháng 6/2023",
+    examDate: "2023-06-15",
     location: "Trung tâm sát hạch lái xe Hà Nội",
     licenseType: "B1",
-    candidates: 30,
-    passedCount: 25,
+    maxParticipants: 30,
+    registeredParticipants: 25,
     status: "Đã hoàn thành",
   },
   {
     id: "1002",
-    name: "Kỳ thi sát hạch A1 tháng 6/2023",
-    examDate: "20/06/2023",
-    examTime: "08:00",
+    title: "Kỳ thi sát hạch A1 tháng 6/2023",
+    examDate: "2023-06-20",
     location: "Trung tâm sát hạch lái xe Hà Nội",
     licenseType: "A1",
-    candidates: 45,
-    passedCount: 40,
+    maxParticipants: 45,
+    registeredParticipants: 40,
     status: "Đã hoàn thành",
   },
   {
     id: "1003",
-    name: "Kỳ thi sát hạch B2 tháng 7/2023",
-    examDate: "10/07/2023",
-    examTime: "08:00",
+    title: "Kỳ thi sát hạch B2 tháng 7/2023",
+    examDate: "2023-07-10",
     location: "Trung tâm sát hạch lái xe Hà Nội",
     licenseType: "B2",
-    candidates: 25,
-    passedCount: 0,
+    maxParticipants: 25,
+    registeredParticipants: 20,
     status: "Đang diễn ra",
   },
   {
     id: "1004",
-    name: "Kỳ thi sát hạch A2 tháng 7/2023",
-    examDate: "15/07/2023",
-    examTime: "08:00",
+    title: "Kỳ thi sát hạch A2 tháng 7/2023",
+    examDate: "2023-07-15",
     location: "Trung tâm sát hạch lái xe Hà Nội",
     licenseType: "A2",
-    candidates: 35,
-    passedCount: 0,
-    status: "Chưa diễn ra",
+    maxParticipants: 35,
+    registeredParticipants: 30,
+    status: "Sắp diễn ra",
   },
   {
     id: "1005",
-    name: "Kỳ thi sát hạch B1 tháng 8/2023",
-    examDate: "05/08/2023",
-    examTime: "08:00",
+    title: "Kỳ thi sát hạch B1 tháng 8/2023",
+    examDate: "2023-08-05",
     location: "Trung tâm sát hạch lái xe Hà Nội",
     licenseType: "B1",
-    candidates: 0,
-    passedCount: 0,
-    status: "Chưa diễn ra",
+    maxParticipants: 40,
+    registeredParticipants: 0,
+    status: "Sắp diễn ra",
   },
 ];
 
@@ -303,7 +298,7 @@ export default function ExamManagement() {
         return "bg-green-100 text-green-800";
       case "Đang diễn ra":
         return "bg-yellow-100 text-yellow-800";
-      case "Chưa diễn ra":
+      case "Sắp diễn ra":
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -386,12 +381,11 @@ export default function ExamManagement() {
             <FaFileAlt className="h-6 w-6 text-yellow-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Thí sinh đỗ</p>
+            <p className="text-sm text-gray-500">
+              Tổng số kỳ thi đã hoàn thành
+            </p>
             <p className="text-2xl font-bold text-gray-900">
-              {exams.reduce(
-                (sum, exam) => sum + exam.registeredParticipants,
-                0
-              )}
+              {exams.filter((exam) => exam.status === "Đã hoàn thành").length}
             </p>
           </div>
         </div>
@@ -603,7 +597,7 @@ export default function ExamManagement() {
                     >
                       <option value="Sắp diễn ra">Sắp diễn ra</option>
                       <option value="Đang diễn ra">Đang diễn ra</option>
-                      <option value="Đã kết thúc">Đã kết thúc</option>
+                      <option value="Đã hoàn thành">Đã hoàn thành</option>
                       <option value="Đã hủy">Đã hủy</option>
                     </select>
                   </div>
