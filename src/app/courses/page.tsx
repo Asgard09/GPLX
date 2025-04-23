@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   FaSearch,
@@ -10,76 +10,150 @@ import {
   FaUserPlus,
   FaCalendarAlt,
 } from "react-icons/fa";
-
-// Mock data
-const mockCourses = [
-  {
-    id: "101",
-    name: "Khóa đào tạo lái xe hạng B1",
-    startDate: "01/06/2023",
-    endDate: "30/07/2023",
-    students: 35,
-    instructors: 2,
-    status: "Đang diễn ra",
-  },
-  {
-    id: "102",
-    name: "Khóa đào tạo lái xe hạng A1",
-    startDate: "15/06/2023",
-    endDate: "15/07/2023",
-    students: 40,
-    instructors: 2,
-    status: "Đang diễn ra",
-  },
-  {
-    id: "103",
-    name: "Khóa đào tạo lái xe hạng B2",
-    startDate: "01/08/2023",
-    endDate: "15/09/2023",
-    students: 25,
-    instructors: 3,
-    status: "Sắp diễn ra",
-  },
-  {
-    id: "104",
-    name: "Khóa đào tạo lái xe hạng A2",
-    startDate: "01/04/2023",
-    endDate: "15/05/2023",
-    students: 30,
-    instructors: 1,
-    status: "Đã kết thúc",
-  },
-  {
-    id: "105",
-    name: "Khóa đào tạo lái xe hạng C",
-    startDate: "15/04/2023",
-    endDate: "30/06/2023",
-    students: 20,
-    instructors: 2,
-    status: "Đã kết thúc",
-  },
-];
+import { courseService, Course } from "@/services/firebaseService";
 
 export default function CourseManagement() {
-  const [courses, setCourses] = useState(mockCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [formData, setFormData] = useState<
+    Omit<Course, "id" | "createdAt" | "updatedAt">
+  >({
+    name: "",
+    licenseType: "",
+    startDate: "",
+    endDate: "",
+    maxStudents: 0,
+    instructors: 0,
+    fee: 0,
+    status: "Sắp diễn ra",
+    description: "",
+  });
+
+  // Tải danh sách khóa học từ Firebase
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        const coursesData = await courseService.getCourses();
+        setCourses(coursesData);
+        setError(null);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu khóa học:", err);
+        setError("Không thể tải dữ liệu khóa học. Sử dụng dữ liệu mẫu.");
+        setCourses(mockCourses as Course[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
 
   const filteredCourses = courses.filter(
     (course) =>
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.id.includes(searchTerm)
+      (course.id && course.id.includes(searchTerm))
   );
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    // Xử lý đặc biệt cho các trường số
+    if (name === "maxStudents" || name === "instructors" || name === "fee") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: parseInt(value) || 0,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
 
   const handleNewCourse = () => {
     setSelectedCourse(null);
+    setFormData({
+      name: "",
+      licenseType: "",
+      startDate: "",
+      endDate: "",
+      maxStudents: 0,
+      instructors: 0,
+      fee: 0,
+      status: "Sắp diễn ra",
+      description: "",
+    });
     setIsModalOpen(true);
   };
 
-  const handleEditCourse = (course: any) => {
+  const handleEditCourse = (course: Course) => {
     setSelectedCourse(course);
+    setFormData({
+      name: course.name,
+      licenseType: course.licenseType,
+      startDate: course.startDate,
+      endDate: course.endDate,
+      maxStudents: course.maxStudents,
+      instructors: course.instructors,
+      fee: course.fee,
+      status: course.status,
+      description: course.description || "",
+    });
     setIsModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (selectedCourse && selectedCourse.id) {
+        // Cập nhật khóa học
+        await courseService.updateCourse(selectedCourse.id, formData);
+
+        // Cập nhật danh sách khóa học
+        setCourses((prev) =>
+          prev.map((c) =>
+            c.id === selectedCourse.id ? { ...c, ...formData } : c
+          )
+        );
+      } else {
+        // Thêm khóa học mới
+        const newCourseId = await courseService.createCourse(formData);
+
+        // Thêm khóa học mới vào danh sách
+        const newCourse: Course = {
+          id: newCourseId,
+          ...formData,
+        };
+        setCourses((prev) => [...prev, newCourse]);
+      }
+
+      // Đóng modal
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Lỗi khi lưu khóa học:", err);
+      alert("Đã xảy ra lỗi khi lưu thông tin khóa học. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteCourse = async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa khóa học này?")) {
+      try {
+        await courseService.deleteCourse(id);
+        setCourses((prev) => prev.filter((c) => c.id !== id));
+      } catch (err) {
+        console.error("Lỗi khi xóa khóa học:", err);
+        alert("Đã xảy ra lỗi khi xóa khóa học. Vui lòng thử lại.");
+      }
+    }
   };
 
   function getStatusColor(status: string) {
@@ -95,8 +169,29 @@ export default function CourseManagement() {
     }
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout title="Quản lý đào tạo">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Đang tải...</span>
+            </div>
+            <p className="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Quản lý đào tạo">
+      {error && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          <p>{error}</p>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -160,7 +255,10 @@ export default function CourseManagement() {
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Tổng số học viên</span>
               <span className="font-semibold text-gray-900">
-                {courses.reduce((sum, course) => sum + course.students, 0)}
+                {courses.reduce(
+                  (sum, course) => sum + (course.maxStudents || 0),
+                  0
+                )}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -168,7 +266,7 @@ export default function CourseManagement() {
               <span className="font-semibold text-gray-900">
                 {courses
                   .filter((c) => c.status === "Đang diễn ra")
-                  .reduce((sum, course) => sum + course.students, 0)}
+                  .reduce((sum, course) => sum + (course.maxStudents || 0), 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -176,7 +274,7 @@ export default function CourseManagement() {
               <span className="font-semibold text-gray-900">
                 {courses
                   .filter((c) => c.status === "Sắp diễn ra")
-                  .reduce((sum, course) => sum + course.students, 0)}
+                  .reduce((sum, course) => sum + (course.maxStudents || 0), 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -184,7 +282,7 @@ export default function CourseManagement() {
               <span className="font-semibold text-gray-900">
                 {courses
                   .filter((c) => c.status === "Đã kết thúc")
-                  .reduce((sum, course) => sum + course.students, 0)}
+                  .reduce((sum, course) => sum + (course.maxStudents || 0), 0)}
               </span>
             </div>
           </div>
@@ -232,7 +330,7 @@ export default function CourseManagement() {
                     {course.startDate} - {course.endDate}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {course.students}
+                    {course.maxStudents}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {course.instructors}
@@ -270,6 +368,9 @@ export default function CourseManagement() {
                       <button
                         className="text-red-600 hover:text-red-900"
                         title="Xóa"
+                        onClick={() =>
+                          course.id && handleDeleteCourse(course.id)
+                        }
                       >
                         <FaTrash />
                       </button>
@@ -291,7 +392,13 @@ export default function CourseManagement() {
               </h3>
             </div>
             <div className="p-6">
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">
@@ -299,15 +406,24 @@ export default function CourseManagement() {
                     </label>
                     <input
                       type="text"
+                      name="name"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedCourse?.name || ""}
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Loại bằng lái
                     </label>
-                    <select className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    <select
+                      name="licenseType"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.licenseType}
+                      onChange={handleInputChange}
+                      required
+                    >
                       <option value="">Chọn loại bằng lái</option>
                       <option value="A1">A1</option>
                       <option value="A2">A2</option>
@@ -322,8 +438,11 @@ export default function CourseManagement() {
                     </label>
                     <input
                       type="number"
+                      name="maxStudents"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedCourse?.students || ""}
+                      value={formData.maxStudents}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -332,7 +451,11 @@ export default function CourseManagement() {
                     </label>
                     <input
                       type="date"
+                      name="startDate"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.startDate}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -341,7 +464,11 @@ export default function CourseManagement() {
                     </label>
                     <input
                       type="date"
+                      name="endDate"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.endDate}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -349,8 +476,11 @@ export default function CourseManagement() {
                       Trạng thái
                     </label>
                     <select
+                      name="status"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedCourse?.status || "Sắp diễn ra"}
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      required
                     >
                       <option value="Sắp diễn ra">Sắp diễn ra</option>
                       <option value="Đang diễn ra">Đang diễn ra</option>
@@ -363,7 +493,11 @@ export default function CourseManagement() {
                     </label>
                     <input
                       type="number"
+                      name="fee"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.fee}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -371,8 +505,11 @@ export default function CourseManagement() {
                       Mô tả
                     </label>
                     <textarea
+                      name="description"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                       rows={3}
+                      value={formData.description}
+                      onChange={handleInputChange}
                     ></textarea>
                   </div>
                 </div>
@@ -389,7 +526,7 @@ export default function CourseManagement() {
               <button
                 type="button"
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleSubmit}
               >
                 {selectedCourse ? "Cập nhật" : "Tạo mới"}
               </button>

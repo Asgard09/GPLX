@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   FaSearch,
@@ -10,71 +10,157 @@ import {
   FaEdit,
   FaTrash,
 } from "react-icons/fa";
+import { licenseService, License } from "@/services/firebaseService";
 
-// Mock data
-const mockLicenses = [
-  {
-    id: "1001",
-    name: "Nguyễn Văn A",
-    licenseType: "B1",
-    issueDate: "01/06/2023",
-    status: "Đã cấp",
-  },
-  {
-    id: "1002",
-    name: "Trần Thị B",
-    licenseType: "A1",
-    issueDate: "02/06/2023",
-    status: "Đã cấp",
-  },
-  {
-    id: "1003",
-    name: "Lê Văn C",
-    licenseType: "B2",
-    issueDate: "03/06/2023",
-    status: "Đã cấp",
-  },
-  {
-    id: "1004",
-    name: "Phạm Thị D",
-    licenseType: "B1",
-    issueDate: "",
-    status: "Đang xử lý",
-  },
-  {
-    id: "1005",
-    name: "Hoàng Văn E",
-    licenseType: "A2",
-    issueDate: "",
-    status: "Đang xử lý",
-  },
-];
 
 export default function LicenseManagement() {
-  const [licenses, setLicenses] = useState(mockLicenses);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedLicense, setSelectedLicense] = useState<any>(null);
+  const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
+  const [formData, setFormData] = useState<
+    Omit<License, "id" | "createdAt" | "updatedAt">
+  >({
+    studentId: "",
+    studentName: "",
+    licenseType: "",
+    issueDate: "",
+    expiryDate: "",
+    status: "Đang xử lý",
+  });
+
+  // Tải danh sách giấy phép từ Firebase
+  useEffect(() => {
+    const fetchLicenses = async () => {
+      try {
+        setLoading(true);
+        const licensesData = await licenseService.getLicenses();
+        setLicenses(licensesData);
+        setError(null);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu giấy phép:", err);
+        setError("Không thể tải dữ liệu giấy phép. Sử dụng dữ liệu mẫu.");
+        setLicenses(mockLicenses as License[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLicenses();
+  }, []);
 
   const filteredLicenses = licenses.filter(
     (license) =>
-      license.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      license.id.includes(searchTerm) ||
+      license.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (license.id && license.id.includes(searchTerm)) ||
       license.licenseType.includes(searchTerm)
   );
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleNewLicense = () => {
     setSelectedLicense(null);
+    setFormData({
+      studentId: "",
+      studentName: "",
+      licenseType: "",
+      issueDate: "",
+      expiryDate: "",
+      status: "Đang xử lý",
+    });
     setIsModalOpen(true);
   };
 
-  const handleEditLicense = (license: any) => {
+  const handleEditLicense = (license: License) => {
     setSelectedLicense(license);
+    setFormData({
+      studentId: license.studentId,
+      studentName: license.studentName,
+      licenseType: license.licenseType,
+      issueDate: license.issueDate,
+      expiryDate: license.expiryDate || "",
+      status: license.status,
+    });
     setIsModalOpen(true);
   };
+
+  const handleSubmit = async () => {
+    try {
+      if (selectedLicense && selectedLicense.id) {
+        // Cập nhật giấy phép
+        await licenseService.updateLicense(selectedLicense.id, formData);
+
+        // Cập nhật danh sách giấy phép
+        setLicenses((prev) =>
+          prev.map((l) =>
+            l.id === selectedLicense.id ? { ...l, ...formData } : l
+          )
+        );
+      } else {
+        // Thêm giấy phép mới
+        const newLicenseId = await licenseService.createLicense(formData);
+
+        // Thêm giấy phép mới vào danh sách
+        const newLicense: License = {
+          id: newLicenseId,
+          ...formData,
+        };
+        setLicenses((prev) => [...prev, newLicense]);
+      }
+
+      // Đóng modal
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Lỗi khi lưu giấy phép:", err);
+      alert("Đã xảy ra lỗi khi lưu thông tin giấy phép. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteLicense = async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa giấy phép này?")) {
+      try {
+        await licenseService.deleteLicense(id);
+        setLicenses((prev) => prev.filter((l) => l.id !== id));
+      } catch (err) {
+        console.error("Lỗi khi xóa giấy phép:", err);
+        alert("Đã xảy ra lỗi khi xóa giấy phép. Vui lòng thử lại.");
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Quản lý cấp giấy phép lái xe">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Đang tải...</span>
+            </div>
+            <p className="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Quản lý cấp giấy phép lái xe">
+      {error && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          <p>{error}</p>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -129,7 +215,7 @@ export default function LicenseManagement() {
                     {license.id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {license.name}
+                    {license.studentName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {license.licenseType}
@@ -174,6 +260,9 @@ export default function LicenseManagement() {
                       <button
                         className="text-red-600 hover:text-red-900"
                         title="Xóa"
+                        onClick={() =>
+                          license.id && handleDeleteLicense(license.id)
+                        }
                       >
                         <FaTrash />
                       </button>
@@ -197,7 +286,13 @@ export default function LicenseManagement() {
               </h3>
             </div>
             <div className="p-6">
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -205,8 +300,11 @@ export default function LicenseManagement() {
                     </label>
                     <input
                       type="text"
+                      name="studentName"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedLicense?.name || ""}
+                      value={formData.studentName}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -215,23 +313,24 @@ export default function LicenseManagement() {
                     </label>
                     <input
                       type="text"
+                      name="studentId"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Ngày sinh
-                    </label>
-                    <input
-                      type="date"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.studentId}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Loại GPLX
                     </label>
-                    <select className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    <select
+                      name="licenseType"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.licenseType}
+                      onChange={handleInputChange}
+                      required
+                    >
                       <option value="">Chọn loại GPLX</option>
                       <option value="A1">A1</option>
                       <option value="A2">A2</option>
@@ -242,29 +341,14 @@ export default function LicenseManagement() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Địa chỉ
-                    </label>
-                    <input
-                      type="text"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Số điện thoại
-                    </label>
-                    <input
-                      type="tel"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
                       Trạng thái
                     </label>
                     <select
+                      name="status"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedLicense?.status || "Đang xử lý"}
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      required
                     >
                       <option value="Đang xử lý">Đang xử lý</option>
                       <option value="Đã cấp">Đã cấp</option>
@@ -276,8 +360,22 @@ export default function LicenseManagement() {
                     </label>
                     <input
                       type="date"
+                      name="issueDate"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedLicense?.issueDate || ""}
+                      value={formData.issueDate}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Ngày hết hạn
+                    </label>
+                    <input
+                      type="date"
+                      name="expiryDate"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.expiryDate}
+                      onChange={handleInputChange}
                     />
                   </div>
                 </div>
@@ -336,7 +434,7 @@ export default function LicenseManagement() {
               <button
                 type="button"
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleSubmit}
               >
                 {selectedLicense ? "Cập nhật" : "Tạo mới"}
               </button>

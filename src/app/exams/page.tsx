@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   FaSearch,
@@ -12,6 +12,88 @@ import {
   FaFileAlt,
   FaUserGraduate,
 } from "react-icons/fa";
+import { db } from "@/firebase/config";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+
+// Định nghĩa interface cho kỳ thi
+interface Exam {
+  id?: string;
+  title: string;
+  examDate: string;
+  location: string;
+  licenseType: string;
+  maxParticipants: number;
+  registeredParticipants: number;
+  status: string;
+  description?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+// Dịch vụ Firebase cho kỳ thi
+const examService = {
+  getExams: async (): Promise<Exam[]> => {
+    const examsCollection = collection(db, "exams");
+    const examsSnapshot = await getDocs(examsCollection);
+    return examsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Exam[];
+  },
+
+  getExamById: async (id: string): Promise<Exam | null> => {
+    const examDoc = doc(db, "exams", id);
+    const examSnapshot = await getDoc(examDoc);
+
+    if (examSnapshot.exists()) {
+      return {
+        id: examSnapshot.id,
+        ...examSnapshot.data(),
+      } as Exam;
+    }
+
+    return null;
+  },
+
+  createExam: async (
+    exam: Omit<Exam, "id" | "createdAt" | "updatedAt">
+  ): Promise<string> => {
+    const examsCollection = collection(db, "exams");
+    const docRef = await addDoc(examsCollection, {
+      ...exam,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return docRef.id;
+  },
+
+  updateExam: async (
+    id: string,
+    exam: Partial<Omit<Exam, "id" | "createdAt" | "updatedAt">>
+  ): Promise<void> => {
+    const examDoc = doc(db, "exams", id);
+    await updateDoc(examDoc, {
+      ...exam,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  deleteExam: async (id: string): Promise<void> => {
+    const examDoc = doc(db, "exams", id);
+    await deleteDoc(examDoc);
+  },
+};
 
 // Mock data
 const mockExams = [
@@ -73,26 +155,146 @@ const mockExams = [
 ];
 
 export default function ExamManagement() {
-  const [exams, setExams] = useState(mockExams);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedExam, setSelectedExam] = useState<any>(null);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [formData, setFormData] = useState<
+    Omit<Exam, "id" | "createdAt" | "updatedAt">
+  >({
+    title: "",
+    examDate: "",
+    location: "",
+    licenseType: "",
+    maxParticipants: 0,
+    registeredParticipants: 0,
+    status: "Sắp diễn ra",
+    description: "",
+  });
+
+  // Tải danh sách kỳ thi từ Firebase
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        setLoading(true);
+        const examsData = await examService.getExams();
+        setExams(examsData);
+        setError(null);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu kỳ thi:", err);
+        setError("Không thể tải dữ liệu kỳ thi. Sử dụng dữ liệu mẫu.");
+        setExams(mockExams as Exam[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExams();
+  }, []);
 
   const filteredExams = exams.filter(
     (exam) =>
-      exam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.id.includes(searchTerm) ||
-      exam.licenseType.includes(searchTerm)
+      exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exam.id && exam.id.includes(searchTerm)) ||
+      exam.licenseType.includes(searchTerm) ||
+      exam.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    // Xử lý đặc biệt cho các trường số
+    if (name === "maxParticipants" || name === "registeredParticipants") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: parseInt(value) || 0,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
 
   const handleNewExam = () => {
     setSelectedExam(null);
+    setFormData({
+      title: "",
+      examDate: "",
+      location: "",
+      licenseType: "",
+      maxParticipants: 0,
+      registeredParticipants: 0,
+      status: "Sắp diễn ra",
+      description: "",
+    });
     setIsModalOpen(true);
   };
 
-  const handleEditExam = (exam: any) => {
+  const handleEditExam = (exam: Exam) => {
     setSelectedExam(exam);
+    setFormData({
+      title: exam.title,
+      examDate: exam.examDate,
+      location: exam.location,
+      licenseType: exam.licenseType,
+      maxParticipants: exam.maxParticipants,
+      registeredParticipants: exam.registeredParticipants,
+      status: exam.status,
+      description: exam.description || "",
+    });
     setIsModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (selectedExam && selectedExam.id) {
+        // Cập nhật kỳ thi
+        await examService.updateExam(selectedExam.id, formData);
+
+        // Cập nhật danh sách kỳ thi
+        setExams((prev) =>
+          prev.map((e) =>
+            e.id === selectedExam.id ? { ...e, ...formData } : e
+          )
+        );
+      } else {
+        // Thêm kỳ thi mới
+        const newExamId = await examService.createExam(formData);
+
+        // Thêm kỳ thi mới vào danh sách
+        const newExam: Exam = {
+          id: newExamId,
+          ...formData,
+        };
+        setExams((prev) => [...prev, newExam]);
+      }
+
+      // Đóng modal
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Lỗi khi lưu kỳ thi:", err);
+      alert("Đã xảy ra lỗi khi lưu thông tin kỳ thi. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteExam = async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa kỳ thi này?")) {
+      try {
+        await examService.deleteExam(id);
+        setExams((prev) => prev.filter((e) => e.id !== id));
+      } catch (err) {
+        console.error("Lỗi khi xóa kỳ thi:", err);
+        alert("Đã xảy ra lỗi khi xóa kỳ thi. Vui lòng thử lại.");
+      }
+    }
   };
 
   function getStatusColor(status: string) {
@@ -108,8 +310,29 @@ export default function ExamManagement() {
     }
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout title="Quản lý kỳ thi sát hạch">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Đang tải...</span>
+            </div>
+            <p className="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout title="Quản lý kỳ thi">
+    <DashboardLayout title="Quản lý kỳ thi sát hạch">
+      {error && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          <p>{error}</p>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -150,7 +373,10 @@ export default function ExamManagement() {
           <div>
             <p className="text-sm text-gray-500">Tổng thí sinh đăng ký</p>
             <p className="text-2xl font-bold text-gray-900">
-              {exams.reduce((sum, exam) => sum + exam.candidates, 0)}
+              {exams.reduce(
+                (sum, exam) => sum + exam.registeredParticipants,
+                0
+              )}
             </p>
           </div>
         </div>
@@ -162,7 +388,10 @@ export default function ExamManagement() {
           <div>
             <p className="text-sm text-gray-500">Thí sinh đỗ</p>
             <p className="text-2xl font-bold text-gray-900">
-              {exams.reduce((sum, exam) => sum + exam.passedCount, 0)}
+              {exams.reduce(
+                (sum, exam) => sum + exam.registeredParticipants,
+                0
+              )}
             </p>
           </div>
         </div>
@@ -183,13 +412,13 @@ export default function ExamManagement() {
                   Ngày thi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hạng GPLX
+                  Địa điểm
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số thí sinh
+                  Loại bằng
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Đỗ/Trượt
+                  Thí sinh đăng ký
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
@@ -206,19 +435,19 @@ export default function ExamManagement() {
                     {exam.id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {exam.name}
+                    {exam.title}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {exam.examDate} {exam.examTime}
+                    {exam.examDate}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {exam.location}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {exam.licenseType}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {exam.candidates}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {exam.passedCount}/{exam.candidates - exam.passedCount}
+                    {exam.registeredParticipants}/{exam.maxParticipants}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -247,6 +476,7 @@ export default function ExamManagement() {
                       <button
                         className="text-red-600 hover:text-red-900"
                         title="Xóa"
+                        onClick={() => exam.id && handleDeleteExam(exam.id)}
                       >
                         <FaTrash />
                       </button>
@@ -268,7 +498,13 @@ export default function ExamManagement() {
               </h3>
             </div>
             <div className="p-6">
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">
@@ -276,31 +512,11 @@ export default function ExamManagement() {
                     </label>
                     <input
                       type="text"
+                      name="title"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedExam?.name || ""}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Loại bằng lái
-                    </label>
-                    <select className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900">
-                      <option value="">Chọn loại bằng lái</option>
-                      <option value="A1">A1</option>
-                      <option value="A2">A2</option>
-                      <option value="B1">B1</option>
-                      <option value="B2">B2</option>
-                      <option value="C">C</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Số lượng thí sinh dự kiến
-                    </label>
-                    <input
-                      type="number"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedExam?.candidates || ""}
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -309,26 +525,69 @@ export default function ExamManagement() {
                     </label>
                     <input
                       type="date"
+                      name="examDate"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      value={formData.examDate}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Giờ thi
+                      Loại bằng
                     </label>
-                    <input
-                      type="time"
+                    <select
+                      name="licenseType"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                    />
+                      value={formData.licenseType}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Chọn loại bằng</option>
+                      <option value="A1">A1</option>
+                      <option value="A2">A2</option>
+                      <option value="B1">B1</option>
+                      <option value="B2">B2</option>
+                      <option value="C">C</option>
+                    </select>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">
-                      Địa điểm thi
+                      Địa điểm
                     </label>
                     <input
                       type="text"
+                      name="location"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedExam?.location || ""}
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Số lượng tối đa
+                    </label>
+                    <input
+                      type="number"
+                      name="maxParticipants"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      value={formData.maxParticipants}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Số lượng đăng ký
+                    </label>
+                    <input
+                      type="number"
+                      name="registeredParticipants"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      value={formData.registeredParticipants}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -336,23 +595,29 @@ export default function ExamManagement() {
                       Trạng thái
                     </label>
                     <select
+                      name="status"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedExam?.status || "Chưa diễn ra"}
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      required
                     >
-                      <option value="Chưa diễn ra">Chưa diễn ra</option>
+                      <option value="Sắp diễn ra">Sắp diễn ra</option>
                       <option value="Đang diễn ra">Đang diễn ra</option>
-                      <option value="Đã hoàn thành">Đã hoàn thành</option>
+                      <option value="Đã kết thúc">Đã kết thúc</option>
+                      <option value="Đã hủy">Đã hủy</option>
                     </select>
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">
-                      Số thí sinh đỗ
+                      Mô tả
                     </label>
-                    <input
-                      type="number"
+                    <textarea
+                      name="description"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedExam?.passedCount || "0"}
-                    />
+                      rows={3}
+                      value={formData.description}
+                      onChange={handleInputChange}
+                    ></textarea>
                   </div>
                 </div>
               </form>
@@ -368,7 +633,7 @@ export default function ExamManagement() {
               <button
                 type="button"
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleSubmit}
               >
                 {selectedExam ? "Cập nhật" : "Tạo mới"}
               </button>

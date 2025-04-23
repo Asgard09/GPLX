@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   FaSearch,
@@ -10,83 +10,221 @@ import {
   FaEye,
   FaChalkboardTeacher,
 } from "react-icons/fa";
+import { db } from "@/firebase/config";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
 
-// Mock data
-const mockInstructors = [
-  {
-    id: "1",
-    name: "Nguyễn Văn An",
-    dob: "10/05/1980",
-    phone: "0901234567",
-    email: "an.nguyen@gmail.com",
-    address: "Hà Nội",
-    specialization: "Lý thuyết",
-    status: "Đang dạy",
+// Định nghĩa interface cho giáo viên
+interface Instructor {
+  id?: string;
+  name: string;
+  dob: string;
+  phone: string;
+  email: string;
+  address: string;
+  specialization: string;
+  status: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+// Dịch vụ Firebase cho giáo viên
+const instructorService = {
+  getInstructors: async (): Promise<Instructor[]> => {
+    const instructorsCollection = collection(db, "instructors");
+    const instructorsSnapshot = await getDocs(instructorsCollection);
+    return instructorsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Instructor[];
   },
-  {
-    id: "2",
-    name: "Trần Thị Bình",
-    dob: "15/08/1985",
-    phone: "0912345678",
-    email: "binh.tran@gmail.com",
-    address: "TP.HCM",
-    specialization: "Thực hành",
-    status: "Đang dạy",
+
+  getInstructorById: async (id: string): Promise<Instructor | null> => {
+    const instructorDoc = doc(db, "instructors", id);
+    const instructorSnapshot = await getDoc(instructorDoc);
+
+    if (instructorSnapshot.exists()) {
+      return {
+        id: instructorSnapshot.id,
+        ...instructorSnapshot.data(),
+      } as Instructor;
+    }
+
+    return null;
   },
-  {
-    id: "3",
-    name: "Phạm Văn Cường",
-    dob: "20/03/1978",
-    phone: "0923456789",
-    email: "cuong.pham@gmail.com",
-    address: "Đà Nẵng",
-    specialization: "Lý thuyết & Thực hành",
-    status: "Đang dạy",
+
+  createInstructor: async (
+    instructor: Omit<Instructor, "id" | "createdAt" | "updatedAt">
+  ): Promise<string> => {
+    const instructorsCollection = collection(db, "instructors");
+    const docRef = await addDoc(instructorsCollection, {
+      ...instructor,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return docRef.id;
   },
-  {
-    id: "4",
-    name: "Lê Thị Dung",
-    dob: "05/11/1982",
-    phone: "0934567890",
-    email: "dung.le@gmail.com",
-    address: "Hải Phòng",
-    specialization: "Thực hành",
-    status: "Nghỉ phép",
+
+  updateInstructor: async (
+    id: string,
+    instructor: Partial<Omit<Instructor, "id" | "createdAt" | "updatedAt">>
+  ): Promise<void> => {
+    const instructorDoc = doc(db, "instructors", id);
+    await updateDoc(instructorDoc, {
+      ...instructor,
+      updatedAt: serverTimestamp(),
+    });
   },
-  {
-    id: "5",
-    name: "Hoàng Văn Em",
-    dob: "25/07/1975",
-    phone: "0945678901",
-    email: "em.hoang@gmail.com",
-    address: "Cần Thơ",
-    specialization: "Lý thuyết",
-    status: "Đã nghỉ việc",
+
+  deleteInstructor: async (id: string): Promise<void> => {
+    const instructorDoc = doc(db, "instructors", id);
+    await deleteDoc(instructorDoc);
   },
-];
+};
 
 export default function InstructorManagement() {
-  const [instructors, setInstructors] = useState(mockInstructors);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
+  const [selectedInstructor, setSelectedInstructor] =
+    useState<Instructor | null>(null);
+  const [formData, setFormData] = useState<
+    Omit<Instructor, "id" | "createdAt" | "updatedAt">
+  >({
+    name: "",
+    dob: "",
+    phone: "",
+    email: "",
+    address: "",
+    specialization: "",
+    status: "Đang dạy",
+  });
+
+  // Tải danh sách giáo viên từ Firebase
+  useEffect(() => {
+    const fetchInstructors = async () => {
+      try {
+        setLoading(true);
+        const instructorsData = await instructorService.getInstructors();
+        setInstructors(instructorsData);
+        setError(null);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu giáo viên:", err);
+        setError("Không thể tải dữ liệu giáo viên. Sử dụng dữ liệu mẫu.");
+        setInstructors(mockInstructors as Instructor[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInstructors();
+  }, []);
 
   const filteredInstructors = instructors.filter(
     (instructor) =>
       instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instructor.id.includes(searchTerm) ||
+      (instructor.id && instructor.id.includes(searchTerm)) ||
       instructor.phone.includes(searchTerm) ||
       instructor.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleNewInstructor = () => {
     setSelectedInstructor(null);
+    setFormData({
+      name: "",
+      dob: "",
+      phone: "",
+      email: "",
+      address: "",
+      specialization: "",
+      status: "Đang dạy",
+    });
     setIsModalOpen(true);
   };
 
-  const handleEditInstructor = (instructor: any) => {
+  const handleEditInstructor = (instructor: Instructor) => {
     setSelectedInstructor(instructor);
+    setFormData({
+      name: instructor.name,
+      dob: instructor.dob,
+      phone: instructor.phone,
+      email: instructor.email,
+      address: instructor.address,
+      specialization: instructor.specialization,
+      status: instructor.status,
+    });
     setIsModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (selectedInstructor && selectedInstructor.id) {
+        // Cập nhật giáo viên
+        await instructorService.updateInstructor(
+          selectedInstructor.id,
+          formData
+        );
+
+        // Cập nhật danh sách giáo viên
+        setInstructors((prev) =>
+          prev.map((i) =>
+            i.id === selectedInstructor.id ? { ...i, ...formData } : i
+          )
+        );
+      } else {
+        // Thêm giáo viên mới
+        const newInstructorId = await instructorService.createInstructor(
+          formData
+        );
+
+        // Thêm giáo viên mới vào danh sách
+        const newInstructor: Instructor = {
+          id: newInstructorId,
+          ...formData,
+        };
+        setInstructors((prev) => [...prev, newInstructor]);
+      }
+
+      // Đóng modal
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Lỗi khi lưu giáo viên:", err);
+      alert("Đã xảy ra lỗi khi lưu thông tin giáo viên. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteInstructor = async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa giáo viên này?")) {
+      try {
+        await instructorService.deleteInstructor(id);
+        setInstructors((prev) => prev.filter((i) => i.id !== id));
+      } catch (err) {
+        console.error("Lỗi khi xóa giáo viên:", err);
+        alert("Đã xảy ra lỗi khi xóa giáo viên. Vui lòng thử lại.");
+      }
+    }
   };
 
   function getStatusColor(status: string) {
@@ -102,8 +240,29 @@ export default function InstructorManagement() {
     }
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout title="Quản lý giáo viên">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Đang tải...</span>
+            </div>
+            <p className="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Quản lý giáo viên">
+      {error && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          <p>{error}</p>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -199,6 +358,9 @@ export default function InstructorManagement() {
                       <button
                         className="text-red-600 hover:text-red-900"
                         title="Xóa"
+                        onClick={() =>
+                          instructor.id && handleDeleteInstructor(instructor.id)
+                        }
                       >
                         <FaTrash />
                       </button>
@@ -222,7 +384,13 @@ export default function InstructorManagement() {
               </h3>
             </div>
             <div className="p-6">
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -230,8 +398,11 @@ export default function InstructorManagement() {
                     </label>
                     <input
                       type="text"
+                      name="name"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedInstructor?.name || ""}
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -240,7 +411,11 @@ export default function InstructorManagement() {
                     </label>
                     <input
                       type="date"
+                      name="dob"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+                      value={formData.dob}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -249,8 +424,11 @@ export default function InstructorManagement() {
                     </label>
                     <input
                       type="tel"
+                      name="phone"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedInstructor?.phone || ""}
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -259,8 +437,11 @@ export default function InstructorManagement() {
                     </label>
                     <input
                       type="email"
+                      name="email"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedInstructor?.email || ""}
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -269,8 +450,11 @@ export default function InstructorManagement() {
                     </label>
                     <input
                       type="text"
+                      name="address"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedInstructor?.address || ""}
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -278,8 +462,11 @@ export default function InstructorManagement() {
                       Chuyên môn
                     </label>
                     <select
+                      name="specialization"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedInstructor?.specialization || ""}
+                      value={formData.specialization}
+                      onChange={handleInputChange}
+                      required
                     >
                       <option value="">Chọn chuyên môn</option>
                       <option value="Lý thuyết">Lý thuyết</option>
@@ -294,8 +481,11 @@ export default function InstructorManagement() {
                       Trạng thái
                     </label>
                     <select
+                      name="status"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
-                      defaultValue={selectedInstructor?.status || "Đang dạy"}
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      required
                     >
                       <option value="Đang dạy">Đang dạy</option>
                       <option value="Nghỉ phép">Nghỉ phép</option>
@@ -358,7 +548,7 @@ export default function InstructorManagement() {
               <button
                 type="button"
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleSubmit}
               >
                 {selectedInstructor ? "Cập nhật" : "Tạo mới"}
               </button>

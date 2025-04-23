@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   FaSearch,
@@ -10,77 +10,136 @@ import {
   FaEye,
   FaIdCard,
 } from "react-icons/fa";
+import { studentService, Student } from "@/services/firebaseService";
 
-// Mock data
-const mockStudents = [
-  {
-    id: "1",
-    name: "Nguyễn Văn A",
-    dob: "01/01/1990",
-    phone: "0901234567",
-    address: "Hà Nội",
-    course: "B1",
-    status: "Đang học",
-  },
-  {
-    id: "2",
-    name: "Trần Thị B",
-    dob: "02/03/1992",
-    phone: "0912345678",
-    address: "TP.HCM",
-    course: "A1",
-    status: "Đang học",
-  },
-  {
-    id: "3",
-    name: "Lê Văn C",
-    dob: "10/05/1985",
-    phone: "0923456789",
-    address: "Đà Nẵng",
-    course: "B2",
-    status: "Đã tốt nghiệp",
-  },
-  {
-    id: "4",
-    name: "Phạm Thị D",
-    dob: "15/08/1995",
-    phone: "0934567890",
-    address: "Cần Thơ",
-    course: "A2",
-    status: "Đang học",
-  },
-  {
-    id: "5",
-    name: "Hoàng Văn E",
-    dob: "20/12/1988",
-    phone: "0945678901",
-    address: "Hải Phòng",
-    course: "C",
-    status: "Chưa học",
-  },
-];
+
 
 export default function StudentManagement() {
-  const [students, setStudents] = useState(mockStudents);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [formData, setFormData] = useState<
+    Omit<Student, "id" | "createdAt" | "updatedAt">
+  >({
+    name: "",
+    dob: "",
+    phone: "",
+    address: "",
+    cccd: "",
+    course: "",
+    status: "Chưa học",
+  });
+
+  // Tải danh sách học viên từ Firebase
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        const studentsData = await studentService.getStudents();
+        setStudents(studentsData);
+        setError(null);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu học viên:", err);
+        setError("Không thể tải dữ liệu học viên. Sử dụng dữ liệu mẫu.");
+        setStudents(mockStudents);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
 
   const filteredStudents = students.filter(
     (student) =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.id.includes(searchTerm) ||
+      (student.id && student.id.includes(searchTerm)) ||
       student.phone.includes(searchTerm)
   );
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleNewStudent = () => {
     setSelectedStudent(null);
+    setFormData({
+      name: "",
+      dob: "",
+      phone: "",
+      address: "",
+      cccd: "",
+      course: "",
+      status: "Chưa học",
+    });
     setIsModalOpen(true);
   };
 
-  const handleEditStudent = (student: any) => {
+  const handleEditStudent = (student: Student) => {
     setSelectedStudent(student);
+    setFormData({
+      name: student.name,
+      dob: student.dob,
+      phone: student.phone,
+      address: student.address,
+      cccd: student.cccd || "",
+      course: student.course,
+      status: student.status,
+    });
     setIsModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (selectedStudent && selectedStudent.id) {
+        // Cập nhật học viên
+        await studentService.updateStudent(selectedStudent.id, formData);
+
+        // Cập nhật danh sách học viên
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === selectedStudent.id ? { ...s, ...formData } : s
+          )
+        );
+      } else {
+        // Thêm học viên mới
+        const newStudentId = await studentService.createStudent(formData);
+
+        // Thêm học viên mới vào danh sách
+        const newStudent: Student = {
+          id: newStudentId,
+          ...formData,
+        };
+        setStudents((prev) => [...prev, newStudent]);
+      }
+
+      // Đóng modal
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Lỗi khi lưu học viên:", err);
+      alert("Đã xảy ra lỗi khi lưu thông tin học viên. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa học viên này?")) {
+      try {
+        await studentService.deleteStudent(id);
+        setStudents((prev) => prev.filter((s) => s.id !== id));
+      } catch (err) {
+        console.error("Lỗi khi xóa học viên:", err);
+        alert("Đã xảy ra lỗi khi xóa học viên. Vui lòng thử lại.");
+      }
+    }
   };
 
   function getStatusColor(status: string) {
@@ -96,8 +155,29 @@ export default function StudentManagement() {
     }
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout title="Quản lý học viên">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Đang tải...</span>
+            </div>
+            <p className="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Quản lý học viên">
+      {error && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          <p>{error}</p>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -199,6 +279,9 @@ export default function StudentManagement() {
                       <button
                         className="text-red-600 hover:text-red-900"
                         title="Xóa"
+                        onClick={() =>
+                          student.id && handleDeleteStudent(student.id)
+                        }
                       >
                         <FaTrash />
                       </button>
@@ -222,7 +305,13 @@ export default function StudentManagement() {
               </h3>
             </div>
             <div className="p-6">
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -230,8 +319,11 @@ export default function StudentManagement() {
                     </label>
                     <input
                       type="text"
+                      name="name"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedStudent?.name || ""}
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -240,7 +332,11 @@ export default function StudentManagement() {
                     </label>
                     <input
                       type="date"
+                      name="dob"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.dob}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -249,7 +345,11 @@ export default function StudentManagement() {
                     </label>
                     <input
                       type="text"
+                      name="cccd"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.cccd}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -258,8 +358,11 @@ export default function StudentManagement() {
                     </label>
                     <input
                       type="tel"
+                      name="phone"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedStudent?.phone || ""}
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -268,8 +371,11 @@ export default function StudentManagement() {
                     </label>
                     <input
                       type="text"
+                      name="address"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedStudent?.address || ""}
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -277,8 +383,11 @@ export default function StudentManagement() {
                       Khóa học đăng ký
                     </label>
                     <select
+                      name="course"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedStudent?.course || ""}
+                      value={formData.course}
+                      onChange={handleInputChange}
+                      required
                     >
                       <option value="">Chọn khóa học</option>
                       <option value="A1">Khóa đào tạo lái xe hạng A1</option>
@@ -293,8 +402,11 @@ export default function StudentManagement() {
                       Trạng thái
                     </label>
                     <select
+                      name="status"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      defaultValue={selectedStudent?.status || "Chưa học"}
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      required
                     >
                       <option value="Chưa học">Chưa học</option>
                       <option value="Đang học">Đang học</option>
@@ -357,7 +469,7 @@ export default function StudentManagement() {
               <button
                 type="button"
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleSubmit}
               >
                 {selectedStudent ? "Cập nhật" : "Tạo mới"}
               </button>
