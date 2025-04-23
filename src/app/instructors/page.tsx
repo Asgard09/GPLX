@@ -154,6 +154,7 @@ export default function InstructorManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInstructor, setSelectedInstructor] =
     useState<Instructor | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
     Omit<Instructor, "id" | "createdAt" | "updatedAt">
   >({
@@ -232,7 +233,55 @@ export default function InstructorManagement() {
     setIsModalOpen(true);
   };
 
+  const validateForm = () => {
+    const errors: string[] = [];
+
+    if (!formData.name.trim()) errors.push("Họ và tên không được để trống");
+    if (!formData.dob) errors.push("Ngày sinh không được để trống");
+    if (!formData.phone.trim())
+      errors.push("Số điện thoại không được để trống");
+    if (!formData.email.trim()) errors.push("Email không được để trống");
+    if (!formData.address.trim()) errors.push("Địa chỉ không được để trống");
+    if (!formData.specialization) errors.push("Chuyên môn không được để trống");
+
+    // Kiểm tra số điện thoại
+    if (formData.phone && !/^0\d{9}$/.test(formData.phone)) {
+      errors.push("Số điện thoại phải có 10 số và bắt đầu bằng số 0");
+    }
+
+    // Kiểm tra email
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.push("Email không đúng định dạng");
+    }
+
+    // Kiểm tra ngày sinh (phải đủ 18 tuổi)
+    if (formData.dob) {
+      const birthDate = new Date(formData.dob);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
+        age--;
+      }
+
+      if (age < 22) {
+        errors.push("Giáo viên phải từ 22 tuổi trở lên");
+      }
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       if (selectedInstructor && selectedInstructor.id) {
         // Cập nhật giáo viên
@@ -263,6 +312,7 @@ export default function InstructorManagement() {
 
       // Đóng modal
       setIsModalOpen(false);
+      setValidationErrors([]);
     } catch (err) {
       console.error("Lỗi khi lưu giáo viên:", err);
       alert("Đã xảy ra lỗi khi lưu thông tin giáo viên. Vui lòng thử lại.");
@@ -438,6 +488,20 @@ export default function InstructorManagement() {
               </h3>
             </div>
             <div className="p-6">
+              {validationErrors.length > 0 && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
+                  <div className="text-red-700">
+                    <p className="font-medium">
+                      Vui lòng kiểm tra lại thông tin:
+                    </p>
+                    <ul className="mt-1 ml-5 list-disc">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               <form
                 className="space-y-4"
                 onSubmit={(e) => {

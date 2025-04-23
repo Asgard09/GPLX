@@ -12,6 +12,65 @@ import {
 } from "react-icons/fa";
 import { courseService, Course } from "@/services/firebaseService";
 
+// Thêm dữ liệu mẫu
+const mockCourses = [
+  {
+    id: "1001",
+    name: "Khóa đào tạo lái xe hạng B1 - Tháng 6/2023",
+    licenseType: "B1",
+    startDate: "2023-06-01",
+    endDate: "2023-08-01",
+    maxStudents: 30,
+    instructors: 2,
+    fee: 12000000,
+    status: "Đang diễn ra",
+  },
+  {
+    id: "1002",
+    name: "Khóa đào tạo lái xe hạng A1 - Tháng 6/2023",
+    licenseType: "A1",
+    startDate: "2023-06-15",
+    endDate: "2023-07-15",
+    maxStudents: 40,
+    instructors: 3,
+    fee: 4000000,
+    status: "Đang diễn ra",
+  },
+  {
+    id: "1003",
+    name: "Khóa đào tạo lái xe hạng B2 - Tháng 7/2023",
+    licenseType: "B2",
+    startDate: "2023-07-01",
+    endDate: "2023-09-01",
+    maxStudents: 25,
+    instructors: 2,
+    fee: 15000000,
+    status: "Sắp diễn ra",
+  },
+  {
+    id: "1004",
+    name: "Khóa đào tạo lái xe hạng A2 - Tháng 7/2023",
+    licenseType: "A2",
+    startDate: "2023-07-15",
+    endDate: "2023-08-15",
+    maxStudents: 35,
+    instructors: 3,
+    fee: 5000000,
+    status: "Sắp diễn ra",
+  },
+  {
+    id: "1005",
+    name: "Khóa đào tạo lái xe hạng C - Tháng 6/2023",
+    licenseType: "C",
+    startDate: "2023-06-01",
+    endDate: "2023-09-01",
+    maxStudents: 20,
+    instructors: 4,
+    fee: 20000000,
+    status: "Đã kết thúc",
+  },
+];
+
 export default function CourseManagement() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -19,6 +78,7 @@ export default function CourseManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
     Omit<Course, "id" | "createdAt" | "updatedAt">
   >({
@@ -112,7 +172,48 @@ export default function CourseManagement() {
     setIsModalOpen(true);
   };
 
+  const validateForm = () => {
+    const errors: string[] = [];
+
+    if (!formData.name.trim()) errors.push("Tên khóa học không được để trống");
+    if (!formData.licenseType) errors.push("Loại bằng lái không được để trống");
+    if (!formData.startDate) errors.push("Ngày bắt đầu không được để trống");
+    if (!formData.endDate) errors.push("Ngày kết thúc không được để trống");
+    if (formData.maxStudents <= 0)
+      errors.push("Số lượng học viên phải lớn hơn 0");
+    if (formData.instructors <= 0)
+      errors.push("Số lượng giáo viên phải lớn hơn 0");
+    if (formData.fee <= 0) errors.push("Học phí phải lớn hơn 0");
+
+    // Kiểm tra ngày kết thúc phải sau ngày bắt đầu ít nhất 7 ngày
+    if (formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+
+      // Tính số mili giây trong 1 ngày
+      const oneDayMilliseconds = 24 * 60 * 60 * 1000;
+
+      // Tính số ngày chênh lệch
+      const diffDays = Math.round(
+        (endDate.getTime() - startDate.getTime()) / oneDayMilliseconds
+      );
+
+      if (diffDays < 0) {
+        errors.push("Ngày kết thúc không thể trước ngày bắt đầu");
+      } else if (diffDays < 7) {
+        errors.push("Ngày kết thúc phải sau ngày bắt đầu ít nhất 7 ngày");
+      }
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       if (selectedCourse && selectedCourse.id) {
         // Cập nhật khóa học
@@ -138,6 +239,7 @@ export default function CourseManagement() {
 
       // Đóng modal
       setIsModalOpen(false);
+      setValidationErrors([]);
     } catch (err) {
       console.error("Lỗi khi lưu khóa học:", err);
       alert("Đã xảy ra lỗi khi lưu thông tin khóa học. Vui lòng thử lại.");
@@ -392,6 +494,20 @@ export default function CourseManagement() {
               </h3>
             </div>
             <div className="p-6">
+              {validationErrors.length > 0 && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
+                  <div className="text-red-700">
+                    <p className="font-medium">
+                      Vui lòng kiểm tra lại thông tin:
+                    </p>
+                    <ul className="mt-1 ml-5 list-disc">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               <form
                 className="space-y-4"
                 onSubmit={(e) => {
@@ -441,6 +557,19 @@ export default function CourseManagement() {
                       name="maxStudents"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                       value={formData.maxStudents}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Số lượng giáo viên
+                    </label>
+                    <input
+                      type="number"
+                      name="instructors"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      value={formData.instructors}
                       onChange={handleInputChange}
                       required
                     />

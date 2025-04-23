@@ -68,6 +68,7 @@ export default function LicenseManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
     Omit<License, "id" | "createdAt" | "updatedAt">
   >({
@@ -142,7 +143,38 @@ export default function LicenseManagement() {
     setIsModalOpen(true);
   };
 
+  const validateForm = () => {
+    const errors: string[] = [];
+
+    if (!formData.studentName.trim())
+      errors.push("Họ và tên không được để trống");
+    if (!formData.studentId.trim()) errors.push("Số CCCD không được để trống");
+    if (!formData.licenseType) errors.push("Loại GPLX không được để trống");
+
+    // Kiểm tra trạng thái "Đã cấp" phải có ngày cấp và ngày hết hạn
+    if (formData.status === "Đã cấp") {
+      if (!formData.issueDate)
+        errors.push("Ngày cấp không được để trống khi trạng thái là Đã cấp");
+      if (!formData.expiryDate)
+        errors.push(
+          "Ngày hết hạn không được để trống khi trạng thái là Đã cấp"
+        );
+    }
+
+    // Kiểm tra CCCD phải là số và đủ 12 ký tự
+    if (formData.studentId && !/^\d{12}$/.test(formData.studentId)) {
+      errors.push("Số CCCD phải có đúng 12 chữ số");
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       if (selectedLicense && selectedLicense.id) {
         // Cập nhật giấy phép
@@ -168,6 +200,7 @@ export default function LicenseManagement() {
 
       // Đóng modal
       setIsModalOpen(false);
+      setValidationErrors([]);
     } catch (err) {
       console.error("Lỗi khi lưu giấy phép:", err);
       alert("Đã xảy ra lỗi khi lưu thông tin giấy phép. Vui lòng thử lại.");
@@ -334,6 +367,20 @@ export default function LicenseManagement() {
               </h3>
             </div>
             <div className="p-6">
+              {validationErrors.length > 0 && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
+                  <div className="text-red-700">
+                    <p className="font-medium">
+                      Vui lòng kiểm tra lại thông tin:
+                    </p>
+                    <ul className="mt-1 ml-5 list-disc">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               <form
                 className="space-y-4"
                 onSubmit={(e) => {

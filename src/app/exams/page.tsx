@@ -156,6 +156,7 @@ export default function ExamManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
     Omit<Exam, "id" | "createdAt" | "updatedAt">
   >({
@@ -248,7 +249,45 @@ export default function ExamManagement() {
     setIsModalOpen(true);
   };
 
+  const validateForm = () => {
+    const errors: string[] = [];
+
+    if (!formData.title.trim()) errors.push("Tên kỳ thi không được để trống");
+    if (!formData.examDate) errors.push("Ngày thi không được để trống");
+    if (!formData.location.trim()) errors.push("Địa điểm không được để trống");
+    if (!formData.licenseType) errors.push("Loại bằng không được để trống");
+    if (formData.maxParticipants <= 0)
+      errors.push("Số lượng thí sinh tối đa phải lớn hơn 0");
+    if (formData.registeredParticipants < 0)
+      errors.push("Số lượng thí sinh đăng ký không hợp lệ");
+    if (formData.registeredParticipants > formData.maxParticipants)
+      errors.push(
+        "Số lượng thí sinh đăng ký không thể lớn hơn số lượng tối đa"
+      );
+
+    // Kiểm tra ngày thi phải trong tương lai
+    if (formData.examDate) {
+      const examDate = new Date(formData.examDate);
+      // Đặt thời gian về 00:00:00 để so sánh chỉ theo ngày
+      examDate.setHours(0, 0, 0, 0);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (examDate <= today) {
+        errors.push("Ngày thi phải là ngày trong tương lai");
+      }
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       if (selectedExam && selectedExam.id) {
         // Cập nhật kỳ thi
@@ -274,6 +313,7 @@ export default function ExamManagement() {
 
       // Đóng modal
       setIsModalOpen(false);
+      setValidationErrors([]);
     } catch (err) {
       console.error("Lỗi khi lưu kỳ thi:", err);
       alert("Đã xảy ra lỗi khi lưu thông tin kỳ thi. Vui lòng thử lại.");
@@ -492,6 +532,20 @@ export default function ExamManagement() {
               </h3>
             </div>
             <div className="p-6">
+              {validationErrors.length > 0 && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
+                  <div className="text-red-700">
+                    <p className="font-medium">
+                      Vui lòng kiểm tra lại thông tin:
+                    </p>
+                    <ul className="mt-1 ml-5 list-disc">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               <form
                 className="space-y-4"
                 onSubmit={(e) => {
