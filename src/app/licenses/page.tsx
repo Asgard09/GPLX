@@ -11,6 +11,7 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { licenseService, License } from "@/services/firebaseService";
+import { studentService, Student } from "@/services/firebaseService";
 
 // Thêm dữ liệu mẫu
 const mockLicenses = [
@@ -63,12 +64,14 @@ const mockLicenses = [
 
 export default function LicenseManagement() {
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<
     Omit<License, "id" | "createdAt" | "updatedAt">
@@ -83,22 +86,28 @@ export default function LicenseManagement() {
 
   // Tải danh sách giấy phép từ Firebase
   useEffect(() => {
-    const fetchLicenses = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
+        // Tải giấy phép
         const licensesData = await licenseService.getLicenses();
         setLicenses(licensesData);
+
+        // Tải học viên
+        const studentsData = await studentService.getStudents();
+        setStudents(studentsData);
+
         setError(null);
       } catch (err) {
-        console.error("Lỗi khi tải dữ liệu giấy phép:", err);
-        setError("Không thể tải dữ liệu giấy phép. Sử dụng dữ liệu mẫu.");
+        console.error("Lỗi khi tải dữ liệu:", err);
+        setError("Không thể tải dữ liệu. Sử dụng dữ liệu mẫu.");
         setLicenses(mockLicenses as License[]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLicenses();
+    fetchData();
   }, []);
 
   const filteredLicenses = licenses.filter(
@@ -112,10 +121,28 @@ export default function LicenseManagement() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    // Xử lý đặc biệt cho trường chọn học viên
+    if (name === "selectedStudent" && value) {
+      setSelectedStudent(value);
+
+      // Tìm học viên được chọn
+      const student = students.find((s) => s.id === value);
+      if (student) {
+        // Cập nhật thông tin từ học viên
+        setFormData((prev) => ({
+          ...prev,
+          studentName: student.name,
+          studentId: student.cccd || "",
+          licenseType: student.course || prev.licenseType, // Nếu có khóa học, sử dụng làm loại GPLX
+        }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleNewLicense = () => {
@@ -179,9 +206,6 @@ export default function LicenseManagement() {
     }
 
     // Kiểm tra CCCD phải là số và đủ 12 ký tự
-    if (formData.studentId && !/^\d{12}$/.test(formData.studentId)) {
-      errors.push("Số CCCD phải có đúng 12 chữ số");
-    }
 
     setValidationErrors(errors);
     return errors.length === 0;
@@ -272,13 +296,13 @@ export default function LicenseManagement() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button
+        {/* <button
           onClick={handleNewLicense}
           className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         >
           <FaPlus className="mr-2" />
           Tạo hồ sơ cấp GPLX mới
-        </button>
+        </button> */}
       </div>
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -409,6 +433,29 @@ export default function LicenseManagement() {
                 }}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {!selectedLicense && !isViewMode && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Chọn học viên
+                      </label>
+                      <select
+                        name="selectedStudent"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        value={selectedStudent}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">-- Chọn học viên --</option>
+                        {students.map((student) => (
+                          <option key={student.id} value={student.id}>
+                            {student.name} - {student.cccd || "Chưa có CCCD"}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Chọn học viên để tự động điền thông tin
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Họ và tên

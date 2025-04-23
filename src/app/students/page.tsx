@@ -11,6 +11,8 @@ import {
   FaIdCard,
 } from "react-icons/fa";
 import { studentService, Student } from "@/services/firebaseService";
+import { licenseService } from "@/services/firebaseService";
+import { useRouter } from "next/navigation";
 
 // Thêm dữ liệu mẫu
 const mockStudents = [
@@ -62,6 +64,7 @@ const mockStudents = [
 ];
 
 export default function StudentManagement() {
+  const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,8 +178,8 @@ export default function StudentManagement() {
     if (!formData.course) errors.push("Khóa học không được để trống");
 
     // Kiểm tra số CCCD/CMND
-    if (formData.cccd && formData.cccd.length < 9) {
-      errors.push("Số CCCD/CMND không hợp lệ");
+    if (formData.cccd && !/^\d{10}$/.test(formData.cccd)) {
+      errors.push("Số CCCD/CMND phải có đúng 10 chữ số");
     }
 
     // Kiểm tra số điện thoại
@@ -253,6 +256,31 @@ export default function StudentManagement() {
         console.error("Lỗi khi xóa học viên:", err);
         alert("Đã xảy ra lỗi khi xóa học viên. Vui lòng thử lại.");
       }
+    }
+  };
+
+  const handleRegisterLicense = async (student: Student) => {
+    try {
+      // Chuẩn bị dữ liệu cho giấy phép
+      const licenseData = {
+        studentId: student.cccd || "",
+        studentName: student.name,
+        licenseType: student.course, // Sử dụng loại khóa học làm loại bằng lái
+        issueDate: "",
+        expiryDate: "",
+        status: "Đang xử lý",
+      };
+
+      // Tạo hồ sơ GPLX mới
+      const newLicenseId = await licenseService.createLicense(licenseData);
+
+      alert(`Đã tạo hồ sơ GPLX cho học viên ${student.name} thành công!`);
+
+      // Chuyển hướng đến trang quản lý GPLX
+      router.push("/licenses");
+    } catch (err) {
+      console.error("Lỗi khi tạo hồ sơ GPLX:", err);
+      alert("Đã xảy ra lỗi khi tạo hồ sơ GPLX. Vui lòng thử lại.");
     }
   };
 
@@ -381,6 +409,7 @@ export default function StudentManagement() {
                       <button
                         className="text-green-600 hover:text-green-900"
                         title="Đăng ký GPLX"
+                        onClick={() => handleRegisterLicense(student)}
                       >
                         <FaIdCard />
                       </button>
