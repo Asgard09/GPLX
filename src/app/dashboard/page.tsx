@@ -49,10 +49,12 @@ export default function Dashboard() {
             <div className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     {card.title}
                   </h3>
-                  <p className="text-3xl font-bold mt-2">{card.stat}</p>
+                  <p className="text-3xl font-bold mt-2 text-gray-900">
+                    {card.stat}
+                  </p>
                   <p className="text-sm text-gray-500 mt-1">
                     {card.description}
                   </p>
@@ -66,7 +68,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Lịch kỳ thi gần đây
           </h3>
           <div className="space-y-3">
@@ -74,7 +76,9 @@ export default function Dashboard() {
               <div key={i} className="border-b pb-3 last:border-0">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">Kỳ thi B1 #{i + 1}</p>
+                    <p className="font-medium text-gray-900">
+                      Kỳ thi B1 #{i + 1}
+                    </p>
                     <p className="text-sm text-gray-500">{`${
                       10 + i
                     }/06/2023 - 08:00 AM`}</p>
@@ -101,7 +105,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Cấp GPLX gần đây
           </h3>
           <div className="space-y-3">
@@ -109,7 +113,7 @@ export default function Dashboard() {
               <div key={i} className="border-b pb-3 last:border-0">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">
+                    <p className="font-medium text-gray-900">
                       Nguyễn Văn {String.fromCharCode(65 + i)}
                     </p>
                     <p className="text-sm text-gray-500">

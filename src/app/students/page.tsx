@@ -105,7 +105,7 @@ export default function StudentManagement() {
           </div>
           <input
             type="text"
-            className="pl-10 pr-4 py-2 w-full md:w-80 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+            className="pl-10 pr-4 py-2 w-full md:w-80 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             placeholder="Tìm kiếm theo tên, mã học viên, số điện thoại..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -113,7 +113,7 @@ export default function StudentManagement() {
         </div>
         <button
           onClick={handleNewStudent}
-          className="flex items-center justify-center bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+          className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         >
           <FaPlus className="mr-2" />
           Thêm học viên mới
@@ -356,7 +356,7 @@ export default function StudentManagement() {
               </button>
               <button
                 type="button"
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-primary text-sm font-medium text-white hover:bg-blue-600 focus:outline-none"
+                className="py-2 px-4 border border-transparent rounded-md shadow-sm bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
                 onClick={() => setIsModalOpen(false)}
               >
                 {selectedStudent ? "Cập nhật" : "Tạo mới"}

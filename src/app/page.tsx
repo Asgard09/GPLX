@@ -6,18 +6,21 @@ import { FaUser, FaLock } from "react-icons/fa";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, authenticate with Firebase
-    if (username === "admin" && password === "password") {
+    // Sử dụng tài khoản cố định thay vì xác thực Firebase
+    if (email === "thanhphuc04nh@gmail.com" && password === "09102004") {
+      // Đặt cookie để duy trì trạng thái đăng nhập (tùy chọn)
+      document.cookie = "authenticated=true; path=/";
+      // Chuyển hướng đến trang dashboard
       router.push("/dashboard");
     } else {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng");
+      setError("Email hoặc mật khẩu không đúng");
     }
   };
 
@@ -40,22 +43,22 @@ export default function LoginPage() {
         <form onSubmit={handleLogin}>
           <div className="mb-4">
             <label
-              htmlFor="username"
+              htmlFor="email"
               className="block text-gray-700 text-sm font-bold mb-2"
             >
-              Tên đăng nhập
+              Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FaUser className="text-gray-400" />
               </div>
               <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                placeholder="Nhập tên đăng nhập"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="Nhập email"
                 required
               />
             </div>
@@ -77,7 +80,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 placeholder="Nhập mật khẩu"
                 required
               />
@@ -86,7 +89,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600 transition-colors"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:bg-blue-700 transition-colors"
           >
             Đăng nhập
           </button>
