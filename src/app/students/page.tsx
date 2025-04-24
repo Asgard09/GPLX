@@ -22,8 +22,10 @@ const mockStudents = [
     dob: "01/01/1990",
     phone: "0901234567",
     address: "Hà Nội",
+    cccd: "123456789012",
     course: "B1",
     status: "Đang học",
+    examResult: "",
   },
   {
     id: "2",
@@ -31,8 +33,10 @@ const mockStudents = [
     dob: "02/03/1992",
     phone: "0912345678",
     address: "TP.HCM",
+    cccd: "234567890123",
     course: "A1",
     status: "Đang học",
+    examResult: "",
   },
   {
     id: "3",
@@ -40,8 +44,10 @@ const mockStudents = [
     dob: "10/05/1985",
     phone: "0923456789",
     address: "Đà Nẵng",
+    cccd: "345678901234",
     course: "B2",
     status: "Đã tốt nghiệp",
+    examResult: "Đậu",
   },
   {
     id: "4",
@@ -49,8 +55,10 @@ const mockStudents = [
     dob: "15/08/1995",
     phone: "0934567890",
     address: "Cần Thơ",
+    cccd: "456789012345",
     course: "A2",
     status: "Đang học",
+    examResult: "",
   },
   {
     id: "5",
@@ -58,8 +66,10 @@ const mockStudents = [
     dob: "20/12/1988",
     phone: "0945678901",
     address: "Hải Phòng",
+    cccd: "567890123456",
     course: "C",
-    status: "Chưa học",
+    status: "Đã tốt nghiệp",
+    examResult: "Rớt",
   },
 ];
 
@@ -83,6 +93,7 @@ export default function StudentManagement() {
     cccd: "",
     course: "",
     status: "Chưa học",
+    examResult: "",
   });
 
   // Tải danh sách học viên từ Firebase
@@ -132,6 +143,7 @@ export default function StudentManagement() {
       cccd: "",
       course: "",
       status: "Chưa học",
+      examResult: "",
     });
     setIsModalOpen(true);
   };
@@ -146,6 +158,7 @@ export default function StudentManagement() {
       cccd: student.cccd || "",
       course: student.course,
       status: student.status,
+      examResult: student.examResult || "",
     });
     setIsViewMode(false);
     setIsModalOpen(true);
@@ -161,6 +174,7 @@ export default function StudentManagement() {
       cccd: student.cccd || "",
       course: student.course,
       status: student.status,
+      examResult: student.examResult || "",
     });
     setIsViewMode(true);
     setIsModalOpen(true);
@@ -176,10 +190,11 @@ export default function StudentManagement() {
       errors.push("Số điện thoại không được để trống");
     if (!formData.address.trim()) errors.push("Địa chỉ không được để trống");
     if (!formData.course) errors.push("Khóa học không được để trống");
+    if (!formData.examResult) errors.push("Kỳ thi không được để trống");
 
     // Kiểm tra số CCCD/CMND
-    if (formData.cccd && !/^\d{10}$/.test(formData.cccd)) {
-      errors.push("Số CCCD/CMND phải có đúng 10 chữ số");
+    if (formData.cccd && !/^\d{12}$/.test(formData.cccd)) {
+      errors.push("Số CCCD/CMND phải có đúng 12 chữ số");
     }
 
     // Kiểm tra số điện thoại
@@ -272,7 +287,7 @@ export default function StudentManagement() {
       };
 
       // Tạo hồ sơ GPLX mới
-      const newLicenseId = await licenseService.createLicense(licenseData);
+      await licenseService.createLicense(licenseData);
 
       alert(`Đã tạo hồ sơ GPLX cho học viên ${student.name} thành công!`);
 
@@ -365,6 +380,9 @@ export default function StudentManagement() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Kết quả thi
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thao tác
                 </th>
@@ -397,6 +415,21 @@ export default function StudentManagement() {
                       {student.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {student.examResult ? (
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          student.examResult === "Đậu"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {student.examResult}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Chưa thi</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
@@ -407,9 +440,28 @@ export default function StudentManagement() {
                         <FaEye />
                       </button>
                       <button
-                        className="text-green-600 hover:text-green-900"
-                        title="Đăng ký GPLX"
-                        onClick={() => handleRegisterLicense(student)}
+                        className={`${
+                          student.status === "Đã tốt nghiệp" &&
+                          student.examResult === "Đậu"
+                            ? "text-green-600 hover:text-green-900"
+                            : "text-gray-400 cursor-not-allowed"
+                        }`}
+                        title={
+                          student.status === "Đã tốt nghiệp" &&
+                          student.examResult === "Đậu"
+                            ? "Đăng ký GPLX"
+                            : student.status !== "Đã tốt nghiệp"
+                            ? "Chỉ học viên đã tốt nghiệp mới được đăng ký GPLX"
+                            : "Học viên phải đậu kỳ thi để đăng ký GPLX"
+                        }
+                        onClick={() => {
+                          if (
+                            student.status === "Đã tốt nghiệp" &&
+                            student.examResult === "Đậu"
+                          ) {
+                            handleRegisterLicense(student);
+                          }
+                        }}
                       >
                         <FaIdCard />
                       </button>
@@ -592,6 +644,24 @@ export default function StudentManagement() {
                       <option value="Chưa học">Chưa học</option>
                       <option value="Đang học">Đang học</option>
                       <option value="Đã tốt nghiệp">Đã tốt nghiệp</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Kết quả thi
+                    </label>
+                    <select
+                      name="examResult"
+                      className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${
+                        isViewMode ? "bg-gray-100" : ""
+                      }`}
+                      value={formData.examResult}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                    >
+                      <option value="">Chưa thi</option>
+                      <option value="Đậu">Đậu</option>
+                      <option value="Rớt">Rớt</option>
                     </select>
                   </div>
                 </div>

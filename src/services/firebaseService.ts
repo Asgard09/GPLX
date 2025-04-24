@@ -24,6 +24,7 @@ export interface Student {
   cccd: string;
   course: string;
   status: string;
+  examResult?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
